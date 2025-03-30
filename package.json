@@ -36,5 +36,8 @@
         "url": "https://github.com/1nchhh/progressbar-ts/issues"
     },
     "homepage": "https://github.com/1nchhh/progressbar-ts#readme",
-    "license": "GPL-3.0"
+    "license": "GPL-3.0",
+    "dependencies": {
+        "chalk": "4"
+    }
 }

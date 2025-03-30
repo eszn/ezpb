@@ -1,12 +1,12 @@
 import ProgressBar from '.';
 import axios from 'axios';
-import http from 'http';
-import https from 'https';
+import * as http from 'http';
+import * as https from 'https';
 
 function testAxios() {
     const url = 'http://ipv4.download.thinkbroadband.com/100MB.zip';
 
-    const bar = new ProgressBar('100MB.zip', 1, 'clockwise');
+    const bar = new ProgressBar('100MB.zip', 1);
 
     bar.start(15);
 
@@ -18,7 +18,7 @@ function testAxios() {
 function testHttp() {
     const url = 'http://ipv4.download.thinkbroadband.com/100MB.zip';
 
-    const bar = new ProgressBar('100MB.zip', 1, 'clockwise');
+    const bar = new ProgressBar('100MB.zip', 1);
 
     bar.start(15);
 
@@ -40,7 +40,7 @@ function testHttp() {
 function testHttps() {
     const url = 'https://speed.hetzner.de/100MB.bin';
 
-    const bar = new ProgressBar('100MB.zip', 1, 'fill-left-bottom');
+    const bar = new ProgressBar('100MB.zip', 1);
 
     bar.start(15);
 

@@ -1,6 +1,17 @@
 import type { AxiosProgressEvent } from 'axios';
-import { BrailleStyle, BrailleCharacter } from './braille';
-import http from 'http';
+import * as http from 'http';
+import chalk from 'chalk';
+
+const RAINBOW_COLORS = [
+    chalk.red,
+    chalk.hex('#FF7F00'), // orange
+    chalk.yellow,
+    chalk.green,
+    chalk.blue,
+    chalk.hex('#8B00FF') // violet
+];
+
+const NYAN_CAT = '🐱🍞✨';
 
 export default class ProgressBar {
     max: number;
@@ -11,18 +22,15 @@ export default class ProgressBar {
     refreshInterval: number;
     interval: NodeJS.Timeout;
 
-    barLength: number;
-    style: BrailleStyle;
+    trailOffset: number = 0;
 
-    constructor(name: string, max: number, style: BrailleStyle = 'cw') {
+    constructor(name: string, max: number) {
         this.name = name;
         this.max = max;
         this.value = 0;
 
-        this.style = style;
-
         process.stdout.on('resize', () => {
-            this.barLength = this.getBarLength();
+            // no-op for now, can be extended for dynamic barLength
         });
     }
 
@@ -45,58 +53,24 @@ export default class ProgressBar {
         process.stdout.write(this.getLine());
     }
 
-    private getLine() {
-        const bar = this.getBar();
+    private getLine(): string {
+        const width = process.stdout.columns;
         const percent = this.value / this.max;
-        let percentString = (percent * 100).toFixed(2);
+        const progress = Math.floor(percent * 100);
+        const trailLength = Math.max(0, width - this.name.length - 10 - NYAN_CAT.length - 5);
 
-        if (percentString.length < 6) {
-            if (!percentString.includes('.')) {
-                percentString += '.00';
-            } else {
-                const beforeDecimal = percentString.split('.')[0];
-                const afterDecimal = percentString.split('.')[1];
+        const rainbow = this.getRainbowTrail(Math.floor(trailLength * percent));
+        return `${this.name} ${rainbow}${NYAN_CAT} ${progress}%`;
+    }
 
-                if (afterDecimal.length === 1) {
-                    percentString += '0';
-                }
-
-                if (beforeDecimal.length === 1) {
-                    percentString = `  ${percentString}`;
-                } else if (beforeDecimal.length === 2) {
-                    percentString = ` ${percentString}`;
-                }
-            }
+    private getRainbowTrail(length: number): string {
+        let trail = '';
+        for (let i = 0; i < length; i++) {
+            const colorFn = RAINBOW_COLORS[(i + this.trailOffset) % RAINBOW_COLORS.length];
+            trail += colorFn('~');
         }
-
-        return `${this.name} ${bar} ${percentString}% ${' '.repeat(this.max.toString().length - this.value.toString().length)}(${this.value}/${this.max})`;
-    }
-
-    private getBarLength() {
-        return process.stdout.columns - this.name.length - `  [] 100.00% (${this.max}/${this.max})`.length;
-    }
-
-    private getBar() {
-        const percent = this.value / this.max;
-
-        this.barLength ??= this.getBarLength();
-
-        const filled = Math.floor(this.barLength * percent);
-        let empty = this.barLength;
-
-        empty -= filled;
-        empty -= 1; // for the partial block
-
-        const quantity = this.max / this.barLength;
-        const completeQuantity = quantity * filled;
-        const incompleteQuantity = this.value - completeQuantity;
-        const incompletePercent = incompleteQuantity / quantity;
-
-        return `[${BrailleCharacter.fromUnicodeStyleBinary(0b11111111).getChar().repeat(filled)}${percent === 1
-            ? ''
-            : BrailleCharacter.fromPercent(incompletePercent, this.style)}${percent === 1 // eslint-disable-next-line indent
-                ? '' // eslint-disable-next-line indent
-                : BrailleCharacter.fromUnicodeStyleBinary(0b00000000).getChar().repeat(empty)}]`;
+        this.trailOffset++;
+        return trail;
     }
 
     axiosProgress() {
@@ -104,9 +78,7 @@ export default class ProgressBar {
 
         return (progressEvent: AxiosProgressEvent) => {
             if (!fetchedMax) {
-                this.max = progressEvent.total;
-                this.barLength = this.getBarLength();
-
+                this.max = progressEvent.total!;
                 fetchedMax = true;
             }
 
@@ -120,8 +92,6 @@ export default class ProgressBar {
         return (res: http.IncomingMessage) => {
             if (!fetchedMax) {
                 this.max = Number(res.headers['content-length']);
-                this.barLength = this.getBarLength();
-
                 fetchedMax = true;
             }
 
@@ -147,10 +117,7 @@ export default class ProgressBar {
             this.interval = null;
 
             this.render();
-
             process.stdout.write('\n');
         }
     }
 }
-
-export * as Braille from './braille';
